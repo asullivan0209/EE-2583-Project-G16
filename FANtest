@@ -1,0 +1,43 @@
+// EE2583 Final Project
+// Zachary McDaris
+
+// CONFIG1
+#pragma config FOSC = INTOSC    // Oscillator Selection (INTOSC oscillator
+#pragma config WDTE = OFF       // Watchdog Timer Enable (WDT disabled)
+#pragma config PWRTE = OFF      // Power-up Timer Enable (PWRT disabled)
+#pragma config MCLRE = ON       // MCLR Pin Function Select  MCLR
+#pragma config CP = OFF         // Flash Program Memory Protect disabled
+#pragma config CPD = OFF        // Data Memory Code Protection disabled
+#pragma config BOREN = OFF      // Brown-out Reset disabled
+#pragma config CLKOUTEN = OFF   // Clock Out disabled.
+#pragma config IESO = OFF       // Internal/External Switchover disabled
+#pragma config FCMEN = OFF      // Fail-Safe Clock Monitor Enable disabled
+
+// CONFIG2
+#pragma config WRT = OFF        // Flash Memory Self-Write Protection off
+#pragma config PLLEN = OFF      // PLL Enable (4x PLL disabled)
+#pragma config STVREN = ON      // Stack Overflow/Underflow Reset Enable 
+#pragma config BORV = LO        // Brown-out Reset Voltage Selection low
+#pragma config LVP = ON        // Low-Voltage Programming Enabled
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <xc.h>
+#define _XTAL_FREQ 4000000.0    /*for 4mhz*/
+
+
+void main(void) {
+    // 1. Setup
+    TRISCbits.TRISC2 = 0;   // Set RC2 as Output
+    ANSELCbits.ANSC2 = 0;   // Disable Analog on RC2
+    
+    while(1) {
+        // 2. Turn ON
+        LATCbits.LATC2 = 1; 
+        __delay_ms(500);   // Wait 5 seconds
+        
+        // 3. Turn OFF
+        LATCbits.LATC2 = 0; 
+        __delay_ms(1000);   // Wait 5 seconds
+    }
+}
