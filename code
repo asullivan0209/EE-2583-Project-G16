@@ -1,1 +1,61 @@
+/*
+ * Group 16 project
+ * 
+ * 
+ * 
+ */
+// 'C' source line config statements  
+// #pragma config statements should precede project file includes.  
+ 
+// CONFIG1
+#pragma config FOSC = INTOSC    // Oscillator Selection (INTOSC oscillator
+#pragma config WDTE = OFF       // Watchdog Timer Enable (WDT disabled)
+#pragma config PWRTE = OFF      // Power-up Timer Enable (PWRT disabled)
+#pragma config MCLRE = ON       // MCLR Pin Function Select  MCLR
+#pragma config CP = OFF         // Flash Program Memory Protect disabled
+#pragma config CPD = OFF        // Data Memory Code Protection disabled
+#pragma config BOREN = OFF      // Brown-out Reset disabled
+#pragma config CLKOUTEN = OFF   // Clock Out disabled.
+#pragma config IESO = OFF       // Internal/External Switchover disabled
+#pragma config FCMEN = OFF      // Fail-Safe Clock Monitor Enable disabled
 
+// CONFIG2
+#pragma config WRT = OFF        // Flash Memory Self-Write Protection off
+#pragma config PLLEN = OFF      // PLL Enable (4x PLL disabled)
+#pragma config STVREN = ON      // Stack Overflow/Underflow Reset Enable 
+#pragma config BORV = LO        // Brown-out Reset Voltage Selection low
+#pragma config LVP = ON        // Low-Voltage Programming Enabled
+
+#include <xc.h>  
+#include <stdio.h>  
+#include <stdlib.h>  
+
+  
+#define _XTAL_FREQ 4000000.0    /*for 4mhz*/
+/*Serial Configuration*/
+#define BAUD 9600   //Bits per second transfer rate
+#define FOSC 4000000L   //Frequency Oscillator
+#define DIVIDER ((int)(FOSC/(16UL * BAUD) -1))  //Should be 25 for 9600/4MhZ
+#define NINE_BITS 0
+#define SPEED 0x4       //T Speed
+#define RX_PIN TRISC5   //Recieve Pin
+#define TX_PIN TRISC4   //Transmit Pin
+
+  
+
+
+  
+void main(void) {  
+
+
+
+
+
+
+
+
+
+
+
+
+}
