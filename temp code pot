@@ -41,25 +41,24 @@
 #define RX_PIN TRISC5   //Recieve Pin
 #define TX_PIN TRISC4   //Transmit Pin
 
-// ===== FUNCTION PROTOTYPES =====
-unsigned int readPot(void);
-void putch(char data);
 
-// ===== GLOBAL (STORED VALUE) =====
 unsigned int potValue = 0;
 float temperatureC = 0;
 
-// ===== MAIN =====
+// ---------- PROTOTYPES ----------
+unsigned int readPot(void);
+void putch(char data);
+
+// ---------- MAIN ----------
 void main(void)
 {
-    // ===== CLOCK =====
     OSCCON = 0x6A;
 
-    // ===== POT SETUP (AN11 / RB5) =====
+    // Pot setup (AN11 / RB5)
     TRISB5 = 1;
     ANSELBbits.ANSB5 = 1;
 
-    // ===== UART =====
+    // UART
     TRISC4 = 0;
     TRISC5 = 1;
     ANSELC = 0x00;
@@ -72,33 +71,28 @@ void main(void)
     BAUDCON = 0x08;
     SPBRG = 25;
 
-    // ===== ADC =====
+    // ADC
     ADCON1 = 0x80;
     ADCON0bits.ADON = 1;
 
     while(1)
     {
-        // -------------------------
-        // READ + STORE VALUE
-        // -------------------------
         potValue = readPot();
 
-        // convert to "temperature"
+        // Convert pot → fake temperature (0–50°C range)
         temperatureC = (potValue * 50.0) / 1023.0;
 
-        // -------------------------
-        // PRINT (COMMENT THIS OUT)
-        // -------------------------
+        // OPTIONAL PRINT (comment out)
         printf("Temperature = %.2f C\r\n", temperatureC);
 
         __delay_ms(500);
     }
 }
 
-// ===== ADC READ =====
+// ---------- POT READ ----------
 unsigned int readPot(void)
 {
-    ADCON0bits.CHS = 0b01011; // AN11 (RB5)
+    ADCON0 = 0x2D;   // YOUR TABLE VALUE (Pot channel AN11)
 
     __delay_ms(2);
 
@@ -108,10 +102,9 @@ unsigned int readPot(void)
     return ((unsigned int)ADRESH << 8) + ADRESL;
 }
 
-// ===== UART =====
+// ---------- UART ----------
 void putch(char data)
 {
     while(!TXIF);
     TXREG = data;
 }
-
