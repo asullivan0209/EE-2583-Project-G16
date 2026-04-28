@@ -41,25 +41,20 @@
 #define RX_PIN TRISC5   //Recieve Pin
 #define TX_PIN TRISC4   //Transmit Pin
 
-// ===== FUNCTION PROTOTYPES =====
-unsigned int readLM35(void);
-void putch(char data);
 
-// ===== GLOBAL STORED VALUES =====
 unsigned int adcValue = 0;
 float temperatureC = 0;
 
-// ===== MAIN =====
+// ---------- PROTOTYPES ----------
+unsigned int readLM35(void);
+void putch(char data);
+
+// ---------- MAIN ----------
 void main(void)
 {
-    // ===== CLOCK =====
     OSCCON = 0x6A;
 
-    // ===== LM35 INPUT (AN0) =====
-    TRISA0 = 1;
-    ANSELAbits.ANSA0 = 1;
-
-    // ===== UART =====
+    // UART
     TRISC4 = 0;
     TRISC5 = 1;
     ANSELC = 0x00;
@@ -72,33 +67,28 @@ void main(void)
     BAUDCON = 0x08;
     SPBRG = 25;
 
-    // ===== ADC =====
+    // ADC
     ADCON1 = 0x80;
     ADCON0bits.ADON = 1;
 
     while(1)
     {
-        // -------------------------
-        // READ + STORE VALUE
-        // -------------------------
         adcValue = readLM35();
 
-        // convert ADC → Celsius (LM35 = 10mV/°C)
+        // LM35 conversion
         temperatureC = (adcValue * 5.0 * 100.0) / 1023.0;
 
-        // -------------------------
-        // PRINT (COMMENT OUT)
-        // -------------------------
+        // OPTIONAL PRINT (comment out)
         printf("Temperature = %.2f C\r\n", temperatureC);
 
         __delay_ms(500);
     }
 }
 
-// ===== ADC READ FUNCTION =====
+// ---------- LM35 READ ----------
 unsigned int readLM35(void)
 {
-    ADCON0bits.CHS = 0b00000; // AN0 (LM35 input)
+    ADCON0 = 0x19;   // YOUR TABLE VALUE (Temp channel)
 
     __delay_ms(2);
 
@@ -108,7 +98,7 @@ unsigned int readLM35(void)
     return ((unsigned int)ADRESH << 8) + ADRESL;
 }
 
-// ===== UART OUTPUT =====
+// ---------- UART ----------
 void putch(char data)
 {
     while(!TXIF);
