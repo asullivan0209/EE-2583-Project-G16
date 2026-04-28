@@ -1,0 +1,116 @@
+/*
+ * Group 16 project
+ * 
+ * 
+ * 
+ */
+// 'C' source line config statements  
+// #pragma config statements should precede project file includes.  
+ 
+// CONFIG1
+#pragma config FOSC = INTOSC    // Oscillator Selection (INTOSC oscillator
+#pragma config WDTE = OFF       // Watchdog Timer Enable (WDT disabled)
+#pragma config PWRTE = OFF      // Power-up Timer Enable (PWRT disabled)
+#pragma config MCLRE = ON       // MCLR Pin Function Select  MCLR
+#pragma config CP = OFF         // Flash Program Memory Protect disabled
+#pragma config CPD = OFF        // Data Memory Code Protection disabled
+#pragma config BOREN = OFF      // Brown-out Reset disabled
+#pragma config CLKOUTEN = OFF   // Clock Out disabled.
+#pragma config IESO = OFF       // Internal/External Switchover disabled
+#pragma config FCMEN = OFF      // Fail-Safe Clock Monitor Enable disabled
+
+// CONFIG2
+#pragma config WRT = OFF        // Flash Memory Self-Write Protection off
+#pragma config PLLEN = OFF      // PLL Enable (4x PLL disabled)
+#pragma config STVREN = ON      // Stack Overflow/Underflow Reset Enable 
+#pragma config BORV = LO        // Brown-out Reset Voltage Selection low
+#pragma config LVP = ON        // Low-Voltage Programming Enabled
+
+#include <xc.h>  
+#include <stdio.h>  
+#include <stdlib.h>  
+
+  
+#define _XTAL_FREQ 4000000.0    /*for 4mhz*/
+/*Serial Configuration*/
+#define BAUD 9600   //Bits per second transfer rate
+#define FOSC 4000000L   //Frequency Oscillator
+#define DIVIDER ((int)(FOSC/(16UL * BAUD) -1))  //Should be 25 for 9600/4MhZ
+#define NINE_BITS 0
+#define SPEED 0x4       //T Speed
+#define RX_PIN TRISC5   //Recieve Pin
+#define TX_PIN TRISC4   //Transmit Pin
+
+// ===== FUNCTION PROTOTYPES =====
+unsigned int readLM35(void);
+void putch(char data);
+
+// ===== GLOBAL STORED VALUES =====
+unsigned int adcValue = 0;
+float temperatureC = 0;
+
+// ===== MAIN =====
+void main(void)
+{
+    // ===== CLOCK =====
+    OSCCON = 0x6A;
+
+    // ===== LM35 INPUT (AN0) =====
+    TRISA0 = 1;
+    ANSELAbits.ANSA0 = 1;
+
+    // ===== UART =====
+    TRISC4 = 0;
+    TRISC5 = 1;
+    ANSELC = 0x00;
+
+    APFCON0bits.TXCKSEL = 1;
+    APFCON0bits.RXDTSEL = 1;
+
+    TXSTA = 0x24;
+    RCSTA = 0x90;
+    BAUDCON = 0x08;
+    SPBRG = 25;
+
+    // ===== ADC =====
+    ADCON1 = 0x80;
+    ADCON0bits.ADON = 1;
+
+    while(1)
+    {
+        // -------------------------
+        // READ + STORE VALUE
+        // -------------------------
+        adcValue = readLM35();
+
+        // convert ADC → Celsius (LM35 = 10mV/°C)
+        temperatureC = (adcValue * 5.0 * 100.0) / 1023.0;
+
+        // -------------------------
+        // PRINT (COMMENT OUT)
+        // -------------------------
+        printf("Temperature = %.2f C\r\n", temperatureC);
+
+        __delay_ms(500);
+    }
+}
+
+// ===== ADC READ FUNCTION =====
+unsigned int readLM35(void)
+{
+    ADCON0bits.CHS = 0b00000; // AN0 (LM35 input)
+
+    __delay_ms(2);
+
+    ADGO = 1;
+    while(ADGO);
+
+    return ((unsigned int)ADRESH << 8) + ADRESL;
+}
+
+// ===== UART OUTPUT =====
+void putch(char data)
+{
+    while(!TXIF);
+    TXREG = data;
+}
