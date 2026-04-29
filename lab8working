@@ -1,91 +1,150 @@
-/*
- * Hi-Tech C I2C library for 16F1825
- * Master mode routines for I2C MSSP port to read and write to slave device 
- * Copyright (C)2011 HobbyTronics.co.uk 2011
- * Freely distributable.
-*/
+//I2C LCD
+//DVD
+#include <xc.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include  "i2c.h"
+#include  "i2c_LCD.h"
 
-#define I2C_WRITE 0
-#define I2C_READ 1
+// PIC16F1829 Configuration Bit Settings
+// 'C' source line config statements
 
-// Initialise MSSP1 port. (16F1829 on VIVA board - other devices may differ)
-void i2c_Init(void){
+// #pragma config statements should precede project file includes.
+// Use project enums instead of #define for ON and OFF.
 
-	// Initialise I2C MSSP 1 module
-	// Master 100KHz
-	TRISB4=1;           	// set SCL and SDA pins as inputs
-	TRISB6=1;
+// CONFIG1
+#pragma config FOSC = INTOSC    // Oscillator Selection (INTOSC oscillator: I/O function on CLKIN pin)
+#pragma config WDTE = OFF       // Watchdog Timer Enable (WDT disabled)
+#pragma config PWRTE = OFF      // Power-up Timer Enable (PWRT disabled)
+#pragma config MCLRE = ON       // MCLR Pin Function Select (MCLR/VPP pin function is MCLR)
+#pragma config CP = OFF         // Flash Program Memory Code Protection (Program memory code protection is disabled)
+#pragma config CPD = OFF        // Data Memory Code Protection (Data memory code protection is disabled)
+#pragma config BOREN = ON       // Brown-out Reset Enable (Brown-out Reset enabled)
+#pragma config CLKOUTEN = OFF   // Clock Out Enable (CLKOUT function is disabled. I/O or oscillator function on the CLKOUT pin)
+#pragma config IESO = OFF       // Internal/External Switchover (Internal/External Switchover mode is disabled)
+#pragma config FCMEN = OFF      // Fail-Safe Clock Monitor Enable (Fail-Safe Clock Monitor is disabled)
 
-	SSP1CON1 = 0b00101000; 	// I2C enabled, Master mode
-	SSP1CON2 = 0x00;
-    // I2C Master mode, clock = FOSC/(4 * (SSP1ADD + 1)) 
-    SSP1ADD = 9;    		// 100Khz @ 4Mhz Fosc
+// CONFIG2
+#pragma config WRT = OFF        // Flash Memory Self-Write Protection (Write protection off)
+#pragma config PLLEN = OFF      // PLL Enable (4x PLL disabled)
+#pragma config STVREN = ON      // Stack Overflow/Underflow Reset Enable (Stack Overflow or Underflow will cause a Reset)
+#pragma config BORV = LO        // Brown-out Reset Voltage Selection (Brown-out Reset Voltage (Vbor), low trip point selected.)
+#pragma config LVP = ON        // Low-Voltage Programming Enable (High-voltage on MCLR/VPP must be used for programming)
 
-	SSP1STAT = 0b11000000; 	// Slew rate disabled
 
+#define I2C_SLAVE 0x27	/* was 1E Channel of i2c slave depends on soldering on back of board*/
+#define _XTAL_FREQ 4000000.0    /*for 4mhz*/
+
+//Prototypes
+void I2C_LCD_Command(unsigned char,unsigned char);
+void I2C_LCD_SWrite(unsigned char,unsigned char *, char);
+void I2C_LCD_Init(unsigned char);
+void I2C_LCD_Pos(unsigned char,unsigned char);
+unsigned char I2C_LCD_Busy(unsigned char);
+
+void main(void) {
+	
+    //Variables
+	unsigned char  Sout[16];
+	unsigned char * Sptr; //We also created a pointer
+	Sptr = Sout;   //and set it equal to the Array start address
+    //Now when you pass the pointer in the function call you can use either one
+	int z, num; 
+
+    //Clock and Pin Configs
+	OSCCON  = 0x68; /* b6..4 = 1101 = 4MHz */
+
+	/*  ********************************I2C**************************** */
+	/*  Note the I2C write to LCD uses the 8 bits of the PCF8574 chip to control the LCD  */
+	/*  Connected High 4 bits are High 4 data for LCD (use in 4 bit mode)  the other 4 are     */
+	/*  bit3=turn on /off bk light  bit 2= E line writes on Hi 2 Lo transition, reads Lo to Hi */
+	/*  bit 2=Read write set  to 0 for write   bit 0=RS  command=0 Data=1      */
+	/*  ********************************I2C**************************** */
+    
+    
+	i2c_Init();				// Start I2C as Master 100KH
+	I2C_LCD_Init(I2C_SLAVE); //pass I2C_SLAVE to the init function to create an instance
+	
+	//First Words: Let's say Hello
+    I2C_LCD_Command(I2C_SLAVE, 0x01);
+    I2C_LCD_Pos(I2C_SLAVE,0x40);
+    sprintf(Sout,"Hello World");
+    I2C_LCD_SWrite(I2C_SLAVE,Sout,11);
+    __delay_ms(100);
+    
+	//Let's count our ABC's and ASCII's
+    I2C_LCD_Command(I2C_SLAVE,0x01);
+    __delay_ms(100.0);
+    Sout[0]='A';
+    Sout[1]=0x00;
+    for(z=0;z<100;z++){
+        I2C_LCD_SWrite(I2C_SLAVE,Sout,1);
+        __delay_ms(200.0);
+        Sout[0]+=1;
+    }
+	
+    //Challenge part 1
+    I2C_LCD_Command(I2C_SLAVE, 0x01);
+    I2C_LCD_Pos(I2C_SLAVE,0x40);
+    sprintf(Sout,"Zachary McDaris");
+    I2C_LCD_SWrite(I2C_SLAVE,Sout,15);
+    __delay_ms(2000);
+ 
+    //Challenge part 2
+    int a;
+    int b;
+    a=100;
+    b=50;
+    int sum;
+    sum = a+b;
+    I2C_LCD_Command(I2C_SLAVE, 0x01);
+    I2C_LCD_Pos(I2C_SLAVE,0x40);
+    sprintf(Sout,"%d + %d = %d",a,b,sum);
+    I2C_LCD_SWrite(I2C_SLAVE,Sout,14);
+    __delay_ms(2000);
+    
+    //Challenge part 3
+    I2C_LCD_Command(I2C_SLAVE, 0x01);		//Clear display
+	I2C_LCD_Pos(I2C_SLAVE,0x00);    
+	sprintf(Sout, "Hi Brandon");
+	I2C_LCD_SWrite(I2C_SLAVE, Sout, 10);
+	I2C_LCD_Pos(I2C_SLAVE,0x40);  
+	sprintf(Sout, "Hi DV");
+   	I2C_LCD_SWrite(I2C_SLAVE, Sout, 5);
+	while(1) {
+		
+		for(int i = 0; i < 15; i ++){
+			I2C_LCD_Command(I2C_SLAVE, 0x1C);
+			__delay_ms(200);
+		}		
+		for(int i = 0; i < 15; i ++){
+			I2C_LCD_Command(I2C_SLAVE, 0x18);
+			__delay_ms(200);
+		}
+    }
+    
 }
 
-// i2c_Wait - wait for I2C transfer to finish
-void i2c_Wait(void){
-    while ( ( SSP1CON2 & 0x1F ) || ( SSP1STAT & 0x04 ) );  
-}
 
-// i2c_Start - Start I2C communication
-void i2c_Start(void)
-{
- 	i2c_Wait();
-	SSP1CON2bits.SEN=1;
-}
 
-// i2c_Restart - Re-Start I2C communication
-void i2c_Restart(void){
- 	i2c_Wait();
-	SSP1CON2bits.RSEN=1;
-}
-
-// i2c_Stop - Stop I2C communication
-void i2c_Stop(void)
-{
- 	i2c_Wait();
- 	SSP1CON2bits.PEN=1;
-}
-
-// i2c_Write - Sends one byte of data
-void i2c_Write(unsigned char data)
-{
- 	i2c_Wait();
- 	SSP1BUF = data;
-}
-
-// i2c_Address - Sends Slave Address and Read/Write mode
-// mode is either I2C_WRITE or I2C_READ
-void i2c_Address(unsigned char address, unsigned char mode)
-{
-	unsigned char l_address;
-
-	l_address=address<<1;
-	l_address+=mode;
- 	i2c_Wait();
- 	SSP1BUF = l_address;
-}
-
-// i2c_Read - Reads a byte from Slave device
-unsigned char i2c_Read(unsigned char ack)
-{
-	// Read data from slave
-	// ack should be 1 if there is going to be more data read
-	// ack should be 0 if this is the last byte of data read
- 	unsigned char i2cReadData;
-
- 	i2c_Wait();
-	SSP1CON2bits.RCEN=1;
- 	i2c_Wait();
- 	i2cReadData = SSP1BUF;
- 	i2c_Wait();
- 	if ( ack ) SSP1CON2bits.ACKDT=0;			// Ack
-	else       SSP1CON2bits.ACKDT=1;			// NAck
-	SSP1CON2bits.ACKEN=1;   		            // send acknowledge sequence
-
-	return( i2cReadData );
-}
-
+// //Fun Code
+//	I2C_LCD_Command(I2C_SLAVE, 0x01);		//Clear display
+//	I2C_LCD_Pos(I2C_SLAVE,0x00);    
+//	sprintf(Sout, "Hi Brandon");
+//	I2C_LCD_SWrite(I2C_SLAVE, Sout, 10);
+//	I2C_LCD_Pos(I2C_SLAVE,0x40);  
+//	sprintf(Sout, "Hi DV");
+//	I2C_LCD_SWrite(I2C_SLAVE, Sout, 5);
+//	while(1) {
+//		
+//		for(int i = 0; i < 15; i ++){
+//			I2C_LCD_Command(I2C_SLAVE, 0x1C);
+//			__delay_ms(200);
+//		}
+//		
+//		for(int i = 0; i < 15; i ++){
+//			I2C_LCD_Command(I2C_SLAVE, 0x18);
+//			__delay_ms(200);
+//		}
+//    }
