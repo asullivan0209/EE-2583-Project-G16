@@ -1,0 +1,196 @@
+/*
+ * Group 16 project
+ * 
+ * 
+ * 
+ */
+// 'C' source line config statements  
+// #pragma config statements should precede project file includes.  
+ 
+// CONFIG1
+#pragma config FOSC = INTOSC    // Oscillator Selection (INTOSC oscillator
+#pragma config WDTE = OFF       // Watchdog Timer Enable (WDT disabled)
+#pragma config PWRTE = OFF      // Power-up Timer Enable (PWRT disabled)
+#pragma config MCLRE = ON       // MCLR Pin Function Select  MCLR
+#pragma config CP = OFF         // Flash Program Memory Protect disabled
+#pragma config CPD = OFF        // Data Memory Code Protection disabled
+#pragma config BOREN = OFF      // Brown-out Reset disabled
+#pragma config CLKOUTEN = OFF   // Clock Out disabled.
+#pragma config IESO = OFF       // Internal/External Switchover disabled
+#pragma config FCMEN = OFF      // Fail-Safe Clock Monitor Enable disabled
+
+// CONFIG2
+#pragma config WRT = OFF        // Flash Memory Self-Write Protection off
+#pragma config PLLEN = OFF      // PLL Enable (4x PLL disabled)
+#pragma config STVREN = ON      // Stack Overflow/Underflow Reset Enable 
+#pragma config BORV = LO        // Brown-out Reset Voltage Selection low
+#pragma config LVP = ON        // Low-Voltage Programming Enabled
+
+#include <xc.h>  
+#include <math.h>
+#include <stdio.h>  
+#include <stdlib.h>  
+#include  "i2c.h"
+#include  "i2c_LCD.h"
+
+  
+#define _XTAL_FREQ 4000000.0    /*for 4mhz*/
+/*Serial Configuration*/
+#define BAUD 9600   //Bits per second transfer rate
+#define FOSC 4000000L   //Frequency Oscillator
+#define DIVIDER ((int)(FOSC/(16UL * BAUD) -1))  //Should be 25 for 9600/4MhZ
+#define NINE_BITS 0
+#define SPEED 0x4       //T Speed
+#define RX_PIN TRISC5   //Recieve Pin
+#define TX_PIN TRISC4   //Transmit Pin
+#define I2C_SLAVE 0x27	/* was 1E Channel of i2c slave depends on soldering on back of board*/
+
+
+// ---------- VARIABLES ----------
+float adcValue = 0;
+float voltage = 0;
+float temperatureC = 0;
+char fanOn;
+
+// ---------- PROTOTYPES ----------
+float temp;
+float tempcheck(void);
+void putch(char data);
+void I2C_LCD_Command(unsigned char,unsigned char);
+void I2C_LCD_SWrite(unsigned char,unsigned char *, char);
+void I2C_LCD_Init(unsigned char);
+void I2C_LCD_Pos(unsigned char,unsigned char);
+unsigned char I2C_LCD_Busy(unsigned char);
+void pinConfig(void);
+void fanMAIN(void);
+char fanSTATE();
+
+
+
+
+
+
+// ---------- ADC READ ----------
+float tempcheck(void)
+{
+ /*PCF9700 Temperature Read*/
+       ADCON0 = 0x19; // set up for the temp input channel = 11101  
+       __delay_ms(10); //Allow cap to recharge  
+       ADGO = 1; // initiate conversion on the selected channel  
+       while(ADGO)continue;  
+       temp = (float)((ADRESH<<8)+(ADRESL)); //Store 10 bits into PCF 
+}
+
+
+
+void fanMAIN (void){ // main fan code to activate based on "temp" values
+    
+   
+  
+    
+   
+        if(temperatureC>26){    // sets temp threshold for fan activation
+             // setup pins for 2n2222a
+            
+            LATC2 = 1;}
+        else{
+            LATC2 = 0;} // remains off otherwise
+   
+}
+
+char fanSTATE(void){
+    
+    if(temperatureC > 26){
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+// ---------- MAIN ----------
+void main(void)
+{
+    
+    OSCCON = 0x6A;
+    
+    i2c_Init();
+    I2C_LCD_Init(I2C_SLAVE);
+    
+    fanOn = fanSTATE();
+    LATC2 = fanOn;
+    
+    unsigned char Sout[16];
+    
+    // UART setup
+    TRISC4 = 0;
+    TRISC5 = 1;
+    ANSELC = 0x00;
+
+    TXCKSEL = 1;
+    RXDTSEL = 1;
+
+    TXSTA = 0x24;
+    RCSTA = 0x90;
+    BAUDCON = 0x08;
+    SPBRG = 25;
+
+    // ADC setup
+    ADCON1 = 0x80;
+    ADON = 1;
+    TRISC5 = 0;
+
+    while(1)
+    {
+    tempcheck();
+    adcValue = temp;
+
+    voltage = (adcValue * 5.0) / 1023.0;
+    temperatureC = (voltage - 0.5) * 100.0;
+
+    if(temperatureC > 26){
+        LATC5 = 1;
+    } else {
+        LATC5 = 0;
+    }
+
+    
+
+    // Convert ADC → Voltage
+    voltage = (adcValue * 5.0) / 1023.0;
+
+    // MCP9700F conversion
+    temperatureC = (voltage - 0.5) * 100.0;
+    
+    // -------- LCD DISPLAY --------
+    I2C_LCD_Command(I2C_SLAVE, 0x01); // Clear display
+    __delay_ms(10);
+
+    
+    // Line 1
+    I2C_LCD_Pos(I2C_SLAVE, 0x00);
+    sprintf(Sout, "Group 16");
+    I2C_LCD_SWrite(I2C_SLAVE, Sout, 11);
+
+    // -------- LCD DISPLAY --------
+    I2C_LCD_Command(I2C_SLAVE, 0x01); // Clear display
+    __delay_ms(500);
+
+    // Line 1
+    I2C_LCD_Pos(I2C_SLAVE, 0x00);
+    if(fanOn){
+    sprintf(Sout, "Fan = ON");
+}   else {
+    sprintf(Sout, "Fan = OFF");
+}
+    I2C_LCD_SWrite(I2C_SLAVE, Sout, 11);
+
+    // Line 2
+    I2C_LCD_Pos(I2C_SLAVE, 0x40);
+    sprintf(Sout, "Temp = %.2f C", temperatureC);
+    I2C_LCD_SWrite(I2C_SLAVE, Sout, 14);
+
+    __delay_ms(500);
+}
+    
+
+}
