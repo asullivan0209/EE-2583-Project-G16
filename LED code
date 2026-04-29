@@ -13,7 +13,7 @@ void main(void) {
     LATC |= (1 << 2);
 
     while(1) {
-        // --- SINGULAR TEST ---
+        // --- YOUR SINGULAR TEST ---
         // Change this number to 800, 500, or 200 to test each LED
         unsigned int testValue = 800; 
 
