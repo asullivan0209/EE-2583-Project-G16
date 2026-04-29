@@ -66,6 +66,7 @@ void fanMAIN(void);
 
 
 
+
 // ---------- ADC READ ----------
 float tempcheck(void)
 {
@@ -77,29 +78,31 @@ float tempcheck(void)
        temp = (float)((ADRESH<<8)+(ADRESL)); //Store 10 bits into PCF 
 }
 
+
+
 void fanMAIN (void){ // main fan code to activate based on "temp" values
     
-    // setup pins for 2n2222a
-    TRISC2 = 0;   // set rc2 as output
-    ANSC2 = 0;   // disable rc2 analog
-    int temp = 85;
+   
+  
     
-    while(1){
-        if(temp>25){    // sets temp threshold for fan activation
+   
+        if(temperatureC>26){    // sets temp threshold for fan activation
+             // setup pins for 2n2222a
+            
             LATC2 = 1;}
         else{
             LATC2 = 0;} // remains off otherwise
-    }
+   
 }
 
 // ---------- MAIN ----------
 void main(void)
 {
+    
     OSCCON = 0x6A;
     
     i2c_Init();
     I2C_LCD_Init(I2C_SLAVE);
-    fanMAIN();
     
     unsigned char Sout[16];
     
@@ -119,11 +122,23 @@ void main(void)
     // ADC setup
     ADCON1 = 0x80;
     ADON = 1;
+    TRISC5 = 0;
 
     while(1)
-{
+    {
     tempcheck();
     adcValue = temp;
+
+    voltage = (adcValue * 5.0) / 1023.0;
+    temperatureC = (voltage - 0.5) * 100.0;
+
+    if(temperatureC > 25){
+        LATC5 = 1;
+    } else {
+        LATC5 = 0;
+    }
+
+    
 
     // Convert ADC → Voltage
     voltage = (adcValue * 5.0) / 1023.0;
