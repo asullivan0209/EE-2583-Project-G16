@@ -61,6 +61,27 @@ void I2C_LCD_Pos(unsigned char,unsigned char);
 unsigned char I2C_LCD_Busy(unsigned char);
 
 
+
+
+// ---------- ADC READ ----------
+unsigned int temp(void)
+{
+    ADCON0 = 0x19;   // Temp sensor channel 
+
+    __delay_ms(2);
+
+    ADGO = 1;
+    while(ADGO);
+
+    return ((unsigned int)ADRESH << 8) + ADRESL;
+}
+
+// ---------- UART ----------
+void putch(char data)
+{
+    while(!TXIF);
+    TXREG = data;
+}
 // ---------- MAIN ----------
 void main(void)
 {
@@ -86,10 +107,11 @@ void main(void)
 
     // ADC setup
     ADCON1 = 0x80;
-    ADCON0bits.ADON = 1;
+    ADON = 1;
 
     while(1)
 {
+     
     adcValue = temp();
 
     // Convert ADC → Voltage
@@ -114,24 +136,4 @@ void main(void)
 
     __delay_ms(500);
 }
-}
-
-// ---------- ADC READ ----------
-unsigned int temp(void)
-{
-    ADCON0 = 0x19;   // Temp sensor channel 
-
-    __delay_ms(2);
-
-    ADGO = 1;
-    while(ADGO);
-
-    return ((unsigned int)ADRESH << 8) + ADRESL;
-}
-
-// ---------- UART ----------
-void putch(char data)
-{
-    while(!TXIF);
-    TXREG = data;
 }
