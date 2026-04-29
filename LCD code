@@ -1,1 +1,228 @@
+// ============================================================
+//  MABLAP - Group #16
+//  I2C LCD: Displays group number, temperature, and fan status
+// ============================================================
 
+#pragma config FOSC = INTOSC
+#pragma config WDTE = OFF
+#pragma config PWRTE = OFF
+#pragma config MCLRE = ON
+#pragma config CP = OFF
+#pragma config CPD = OFF
+#pragma config BOREN = OFF
+#pragma config CLKOUTEN = OFF
+#pragma config IESO = OFF
+#pragma config FCMEN = OFF
+#pragma config WRT = OFF
+#pragma config PLLEN = OFF
+#pragma config STVREN = ON
+#pragma config BORV = LO
+#pragma config LVP = ON
+
+#include <xc.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+// ── UART ────────────────────────────────────────────────────
+#define BAUD        9600
+#define FOSC        4000000L
+#define DIVIDER     ((int)(FOSC / (16UL * BAUD) - 1))
+#define NINE_BITS   0
+#define SPEED       0x4
+#define RX_PIN      TRISC5
+#define TX_PIN      TRISC4
+
+// ── Timing ──────────────────────────────────────────────────
+#define _XTAL_FREQ  4000000.0
+
+// ── LCD I2C ─────────────────────────────────────────────────
+#define I2C_SLAVE   0x27        // Typical I2C-LCD module address (change to 0x3F if needed)
+#define LCD_LINE1   0x00        // Cursor start position line 1
+#define LCD_LINE2   0x40        // Cursor start position line 2
+
+// ── Fan ─────────────────────────────────────────────────────
+#define FAN_PIN        RA4      // Fan control output pin
+#define FAN_TRIS       TRISA4   // Fan pin direction register
+#define TEMP_THRESHOLD 30.0     // Temperature threshold in C to turn fan ON
+
+// ── Prototypes ───────────────────────────────────────────────
+void pinConfig(void);
+void setup_comms(void);
+void putch(char bVal);
+int  getch(void);
+int  getche(void);
+void RA5Blink(void);
+void fan_control(double temperature);
+void lcd_update(double temperature);
+
+// I2C-LCD functions provided by your library
+extern void I2C_LCD_Command(unsigned char slave, unsigned char cmd);
+extern void I2C_LCD_Pos(unsigned char slave, unsigned char pos);
+extern void I2C_LCD_SWrite(unsigned char slave, char *str, unsigned char len);
+
+// ── Global variables ─────────────────────────────────────────
+unsigned int  Temp, FVval, Pot;
+double        Ctemp;
+char          Sout[17];         // String buffer for LCD (max 16 chars + null terminator)
+
+// ============================================================
+void main(void) {
+    pinConfig();
+    setup_comms();
+
+    // Internal temperature sensor setup
+    FVRCON = 0xAF;   // Enable Fixed Voltage Reference
+    TSEN   = 1;      // Enable temperature sensor
+    TSRNG  = 0;      // Low range mode
+
+    // A/D converter setup
+    ADCON1 = 0xC3;   // Right-justify, Fosc/4, Vss and FVR as references
+
+    // ── Welcome screen ──────────────────────────────────────
+    I2C_LCD_Command(I2C_SLAVE, 0x01);       // Clear display
+    __delay_ms(2);                          // Wait after clear
+
+    I2C_LCD_Pos(I2C_SLAVE, LCD_LINE1);
+    sprintf(Sout, "  MABLAP #16  ");
+    I2C_LCD_SWrite(I2C_SLAVE, Sout, 14);
+
+    I2C_LCD_Pos(I2C_SLAVE, LCD_LINE2);
+    sprintf(Sout, "  Starting...   ");
+    I2C_LCD_SWrite(I2C_SLAVE, Sout, 16);
+    __delay_ms(2000);
+
+    // ── Main loop ───────────────────────────────────────────
+    while (1) {
+
+        /* Potentiometer read - Channel AN11 */
+        ADCON0 = 0x2D;
+        __delay_ms(10);
+        ADGO = 1;
+        while (ADGO) continue;
+        Pot = (unsigned)((ADRESH << 8) + ADRESL);
+
+        /* Fixed Voltage Reference read */
+        ADCON0 = 0x7D;
+        __delay_ms(10);
+        ADGO = 1;
+        while (ADGO) continue;
+        FVval = ((ADRESH << 8) + ADRESL);
+
+        /* Internal temperature read */
+        ADCON0 = 0x75;
+        __delay_ms(10);
+        ADGO = 1;
+        while (ADGO) continue;
+        Temp = ((ADRESH << 8) + ADRESL);
+
+        /* Temperature math - result in Celsius */
+        Ctemp = ((0.659 - (1.48 * (1.0 - ((float)Temp / 1023.0)))) / 0.00132) - 40.0;
+
+        /* Fan control based on temperature */
+        fan_control(Ctemp);
+
+        /* Update LCD */
+        lcd_update(Ctemp);
+
+        /* Print to serial terminal */
+        printf("IntT %d  FixV %d  Pot %d  Temp %.1f C  Fan %s\n\r",
+               Temp, FVval, Pot, Ctemp,
+               (FAN_PIN ? "ON" : "OFF"));
+
+        __delay_ms(1000);
+
+        /* Blink indicator LED */
+        RA5Blink();
+    }
+}
+
+// ============================================================
+//  Fan control
+//    - Turns ON  if temperature >= TEMP_THRESHOLD
+//    - Turns OFF if temperature <  TEMP_THRESHOLD
+// ============================================================
+void fan_control(double temperature) {
+    if (temperature >= TEMP_THRESHOLD) {
+        FAN_PIN = 1;    // Fan ON
+    } else {
+        FAN_PIN = 0;    // Fan OFF
+    }
+}
+
+// ============================================================
+//  Updates both LCD lines
+//
+//  Line 1:  "Group #16       "   (static)
+//  Line 2:  "T:XX.X  Fan:OFF "   (live data)
+// ============================================================
+void lcd_update(double temperature) {
+    // Line 1 - Group identifier
+    I2C_LCD_Pos(I2C_SLAVE, LCD_LINE1);
+    sprintf(Sout, "Group #16       ");   // Padded to 16 chars
+    I2C_LCD_SWrite(I2C_SLAVE, Sout, 16);
+
+    // Line 2 - Temperature and fan status
+    I2C_LCD_Pos(I2C_SLAVE, LCD_LINE2);
+
+    if (FAN_PIN) {
+        sprintf(Sout, "T:%.1fC  Fan:ON ", temperature);
+    } else {
+        sprintf(Sout, "T:%.1fC  Fan:OFF", temperature);
+    }
+
+    I2C_LCD_SWrite(I2C_SLAVE, Sout, 16);
+}
+
+// ============================================================
+//  Pin configuration
+// ============================================================
+void pinConfig(void) {
+    OSCCON   = 0x6A;
+    TXCKSEL  = 1;
+    RXDTSEL  = 1;
+    TRISA    = 0x10;   // RA4 as output (fan), RA5 as output (LED)
+    ANSELA   = 0x10;
+    FAN_TRIS = 0;      // RA4 output - Fan
+    TRISC    = 0x0C;
+    ANSELC   = 0x0C;
+    TRISB    = 0xF0;
+    ANSELB   = 0xF0;
+    INTCON   = 0;
+    FAN_PIN  = 0;      // Fan off at startup
+}
+
+// ============================================================
+//  UART setup
+// ============================================================
+void setup_comms(void) {
+    RX_PIN = 1;
+    TX_PIN = 1;
+    SPBRG  = DIVIDER;
+    RCSTA  = (NINE_BITS | 0x90);
+    TXSTA  = (SPEED | NINE_BITS | 0x20);
+    TXEN   = 1;
+    SYNC   = 0;
+    SPEN   = 1;
+    BRGH   = 1;
+}
+
+void putch(char bVal) {
+    while (!TXIF) continue;
+    TXREG = bVal;
+}
+
+int getch(void) {
+    while (!RCIF) continue;
+    return RCREG;
+}
+
+int getche(void) {
+    unsigned char c;
+    putch(c = getch());
+    return c;
+}
+
+void RA5Blink(void) {
+    RA5 ^= 0x01;
+    __delay_ms(200);
+}
