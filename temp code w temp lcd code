@@ -97,8 +97,8 @@ void main(void)
     TRISC5 = 1;
     ANSELC = 0x00;
 
-    APFCON0bits.TXCKSEL = 1;
-    APFCON0bits.RXDTSEL = 1;
+    TXCKSEL = 1;
+    RXDTSEL = 1;
 
     TXSTA = 0x24;
     RCSTA = 0x90;
