@@ -116,8 +116,7 @@ void main(void)
     i2c_Init();
     I2C_LCD_Init(I2C_SLAVE);
     
-    fanOn = fanSTATE();
-    LATC2 = fanOn;
+   
     
     unsigned char Sout[16];
     
@@ -143,7 +142,9 @@ void main(void)
     {
     tempcheck();
     adcValue = temp;
-
+    
+    fanOn = fanSTATE();
+    LATC2 = fanOn;
     voltage = (adcValue * 5.0) / 1023.0;
     temperatureC = (voltage - 0.5) * 100.0;
 
@@ -169,20 +170,22 @@ void main(void)
     // Line 1
     I2C_LCD_Pos(I2C_SLAVE, 0x00);
     sprintf(Sout, "Group 16");
-    I2C_LCD_SWrite(I2C_SLAVE, Sout, 11);
+    I2C_LCD_SWrite(I2C_SLAVE, Sout, 8);
 
     // -------- LCD DISPLAY --------
-    I2C_LCD_Command(I2C_SLAVE, 0x01); // Clear display
-    __delay_ms(500);
+   
+    __delay_ms(2000);
 
     // Line 1
     I2C_LCD_Pos(I2C_SLAVE, 0x00);
     if(fanOn){
     sprintf(Sout, "Fan = ON");
+    I2C_LCD_SWrite(I2C_SLAVE, Sout, 8);
 }   else {
     sprintf(Sout, "Fan = OFF");
+    I2C_LCD_SWrite(I2C_SLAVE, Sout, 9);
 }
-    I2C_LCD_SWrite(I2C_SLAVE, Sout, 11);
+    
 
     // Line 2
     I2C_LCD_Pos(I2C_SLAVE, 0x40);
