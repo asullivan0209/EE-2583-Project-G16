@@ -132,7 +132,7 @@ void main(void)
     voltage = (adcValue * 5.0) / 1023.0;
     temperatureC = (voltage - 0.5) * 100.0;
 
-    if(temperatureC > 25){
+    if(temperatureC > 26){
         LATC5 = 1;
     } else {
         LATC5 = 0;
