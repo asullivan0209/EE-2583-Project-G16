@@ -1,5 +1,5 @@
 /*
- * Group 16 Final Project 
+ * Group 16 project
  * 
  * 
  * 
@@ -47,41 +47,35 @@
 
 
 // ---------- VARIABLES ----------
-unsigned int adcValue = 0;
+float adcValue = 0;
 float voltage = 0;
 float temperatureC = 0;
 
 // ---------- PROTOTYPES ----------
-unsigned int readTempSensor(void);
+float temp;
+float tempcheck(void);
 void putch(char data);
 void I2C_LCD_Command(unsigned char,unsigned char);
 void I2C_LCD_SWrite(unsigned char,unsigned char *, char);
 void I2C_LCD_Init(unsigned char);
 void I2C_LCD_Pos(unsigned char,unsigned char);
 unsigned char I2C_LCD_Busy(unsigned char);
+void pinConfig(void);
 
 
 
 
 // ---------- ADC READ ----------
-unsigned int temp(void)
+float tempcheck(void)
 {
-    ADCON0 = 0x19;   // Temp sensor channel 
-
-    __delay_ms(2);
-
-    ADGO = 1;
-    while(ADGO);
-
-    return ((unsigned int)ADRESH << 8) + ADRESL;
+ /*PCF9700 Temperature Read*/
+       ADCON0 = 0x19; // set up for the temp input channel = 11101  
+       __delay_ms(10); //Allow cap to recharge  
+       ADGO = 1; // initiate conversion on the selected channel  
+       while(ADGO)continue;  
+       temp = (unsigned int)((ADRESH<<8)+(ADRESL)); //Store 10 bits into PCF 
 }
 
-// ---------- UART ----------
-void putch(char data)
-{
-    while(!TXIF);
-    TXREG = data;
-}
 // ---------- MAIN ----------
 void main(void)
 {
@@ -112,7 +106,7 @@ void main(void)
     while(1)
 {
      
-    adcValue = temp();
+    adcValue = temp;
 
     // Convert ADC → Voltage
     voltage = (adcValue * 5.0) / 1023.0;
@@ -136,4 +130,5 @@ void main(void)
 
     __delay_ms(500);
 }
+
 }
