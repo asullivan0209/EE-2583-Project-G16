@@ -137,8 +137,8 @@ void main(void)
     ADON = 1;
     
     ANSELA = 0x00;   // digital
-TRISA  = 0x00;   // all output (same style as your working code)
-LATA   = 0x00;   // all OFF
+    TRISA  = 0x00;   // all output 
+    LATA   = 0x00;   // all OFF
 
     // start LED OFF
     LATB &= ~(1 << 2);
